@@ -172,7 +172,8 @@ func registerBlockPlan(m map[string]setupFunc, root *kingpin.CmdClause) {
 Example plan with generation:
 
 ./thanosbench block plan -p <profile> --labels 'cluster="one"' --max-time 2019-10-18T00:00:00Z | ./thanosbench block gen --output.dir ./genblocks --workers 20`)
-	profile := cmd.Flag("profile", "Name of the harcoded profile to use").Required().Short('p').Enum(blockgen.Profiles.Keys()...)
+	profile := cmd.Flag("profile", "Name of the harcoded profile to use").Short('p').Enum(blockgen.Profiles.Keys()...)
+	profileTemplate := extflag.RegisterPathOrContent(cmd, "profile-config", "Path to the profile config")
 	maxTime := model.TimeOrDuration(cmd.Flag("max-time", "If empty current time - 30m (usual consistency delay) is used.").Default("30m"))
 	extLset := cmd.Flag("labels", "External labels for block stream (repeated).").PlaceHolder("<name>=\"<value>\"").Strings()
 	m["block plan"] = func(g *run.Group, _ log.Logger) error {
@@ -182,10 +183,31 @@ Example plan with generation:
 			if err != nil {
 				return err
 			}
-			planFn := blockgen.Profiles[*profile]
-
 			enc := yaml.NewEncoder(os.Stdout)
+
+			if profile != nil && *profile != "" {
+				fmt.Println("Using profile", *profile)
+				planFn := blockgen.Profiles[*profile]
+				return planFn(ctx, *maxTime, lset, func(spec blockgen.BlockSpec) error { return enc.Encode(spec) })
+			}
+
+			b, err := profileTemplate.Content()
+			if err != nil {
+				return err
+			}
+			var plan blockgen.PlanTemplate
+			if err := yaml.Unmarshal(b, &plan); err != nil {
+				return err
+			}
+
+			durations, err := plan.ToDurations()
+			if err != nil {
+				return err
+			}
+
+			planFn := blockgen.ContinuousFromTemplate(durations, plan)
 			return planFn(ctx, *maxTime, lset, func(spec blockgen.BlockSpec) error { return enc.Encode(spec) })
+
 		}, func(error) { cancel() })
 		return nil
 	}

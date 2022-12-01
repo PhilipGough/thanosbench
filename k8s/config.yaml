@@ -1,0 +1,20 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: blockgen-config
+data:
+  config.yaml: |
+    duration: 30d
+    base_name: 'blaa'
+    series_count: 1
+    targets: 1
+    scrape_interval_seconds: 15
+    labels:
+      - key: 'a'
+        cardinality: 25
+      - key: 'b'
+        cardinality: 3
+      - key: 'c'
+        cardinality: 10
+      - key: 'd'
+        cardinality: 5

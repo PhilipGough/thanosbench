@@ -1,0 +1,10 @@
+duration: 30d
+base_name: 'blaa'
+series_count: 1
+targets: 1
+scrape_interval_seconds: 15
+labels:
+  - key: 'a'
+    cardinality: 2
+  - key: 'b'
+    cardinality: 3

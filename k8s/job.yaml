@@ -1,0 +1,42 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: thanosbench-blockgen-and-upload
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: thanosbench
+          imagePullPolicy: Always
+          image: docker.io/philipgough/thanosbench:test
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              ./bin/thanosbench block plan --profile-config-file=/etc/profile-config/config.yaml --labels 'cluster="one"' | \
+              ./bin/thanosbench block gen --objstore.config-file=/etc/objstore-config/objstore-config.yaml --output.dir=/tmp --workers 20
+          volumeMounts:
+            - name: objstore-volume
+              readOnly: true
+              mountPath: "/etc/objstore-config"
+            - name: config-volume
+              readOnly: true
+              mountPath: "/etc/profile-config"
+            - mountPath: /tmp
+              name: datavolume
+      volumes:
+        - name: config-volume
+          configMap:
+            name: blockgen-config
+        - name: objstore-volume
+          secret:
+            secretName: objstore-config
+        - name: datavolume
+          emptyDir: {}
